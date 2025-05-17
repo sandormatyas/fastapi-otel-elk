@@ -1,6 +1,6 @@
 [default]
 APP_NAME="pets_api"
-ENV_NAME="DEV"
+ENV_NAME="dev"
 
 OTEL_ENDPOINT="http://localhost:8200"
 OTEL_BEARER_TOKEN=""

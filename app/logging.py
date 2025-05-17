@@ -51,12 +51,34 @@ def otel_logging_init(resource: Resource, otel_endpoint: str, otel_bearer_token:
 
     logger_provider.add_log_record_processor(log_processor)
 
+    # Create OTEL log handler
     otel_log_handler = LoggingHandler(
         level=logging.INFO, logger_provider=logger_provider
     )
-    logging.getLogger().addHandler(otel_log_handler)
-    logging.getLogger("app").addHandler(otel_log_handler)
-    logging.getLogger("uvicorn").addHandler(otel_log_handler)
+
+    # Configure root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)  # Explicitly set level
+
+    # Add console handler for stdout
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    # Mimic the format of uvicorn logs
+    console_formatter = logging.Formatter("%(levelname)s:     %(message)s - %(name)s")
+    console_handler.setFormatter(console_formatter)
+
+    # Add both handlers to loggers
+    root_logger.addHandler(otel_log_handler)
+    root_logger.addHandler(console_handler)
+
+    # Configure app and uvicorn loggers
+    app_logger = logging.getLogger("app")
+    app_logger.setLevel(logging.INFO)
+    app_logger.propagate = True  # Enable propagation to root logger
+
+    uvicorn_logger = logging.getLogger("uvicorn")
+    uvicorn_logger.setLevel(logging.INFO)
+    uvicorn_logger.propagate = True  # Enable propagation to root logger
 
 
 def setup_opentelemetry():
