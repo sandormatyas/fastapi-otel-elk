@@ -9,11 +9,24 @@ from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from pydantic import BaseModel, Field
 
 from app.config import settings
 
 
-def otel_trace_init(resource: Resource, otel_endpoint: str, otel_bearer_token: str):
+class OTLPAuthConfig(BaseModel):
+    """Class to hold OpenTelemetry authentication details."""
+
+    endpoint: str
+    bearer_token: str
+    headers: dict = Field(default_factory=dict)
+    
+    def model_post_init(self, __context):
+        """Set headers after initialization"""
+        self.headers = {"authorization": f"Bearer {self.bearer_token}"}
+
+
+def otel_trace_init(resource: Resource, otel_auth: OTLPAuthConfig) -> None:
     """Sets up OpenTelemetry trace exporter.
 
     Args:
@@ -24,8 +37,7 @@ def otel_trace_init(resource: Resource, otel_endpoint: str, otel_bearer_token: s
     tracer_provider = TracerProvider(resource=resource)
 
     otel_span_exporter = OTLPSpanExporter(
-        endpoint=otel_endpoint,
-        headers={"authorization": f"Bearer {otel_bearer_token}"},
+        endpoint=otel_auth.endpoint, headers=otel_auth.headers
     )
     span_processor = BatchSpanProcessor(otel_span_exporter)
     tracer_provider.add_span_processor(span_processor)
@@ -33,20 +45,18 @@ def otel_trace_init(resource: Resource, otel_endpoint: str, otel_bearer_token: s
     trace.set_tracer_provider(tracer_provider)
 
 
-def otel_logging_init(resource: Resource, otel_endpoint: str, otel_bearer_token: str):
+def otel_logging_init(resource: Resource, otel_auth: OTLPAuthConfig) -> None:
     """Sets up OpenTelemetry log exporter.
 
     Args:
         resource (Resource): The resource to be associated with all spans created.
-        otel_endpoint (str): The endpoint to send traces to.
-        otel_bearer_token (str): Bearer token to use for authentication.
+        otel_auth (dict): Dictionary containing the endpoint and bearer token for authentication.
     """
     logger_provider = LoggerProvider(resource=resource)
     set_logger_provider(logger_provider)
 
     otel_log_exporter = OTLPLogExporter(
-        endpoint=otel_endpoint,
-        headers={"authorization": f"Bearer {otel_bearer_token}"},
+        endpoint=otel_auth.endpoint, headers=otel_auth.headers
     )
     log_processor = BatchLogRecordProcessor(otel_log_exporter)
 
@@ -57,22 +67,22 @@ def otel_logging_init(resource: Resource, otel_endpoint: str, otel_bearer_token:
         level=logging.INFO, logger_provider=logger_provider
     )
 
-    # Configure root logger
     root_logger = logging.getLogger()
-    root_logger.setLevel(logging.INFO)  # Explicitly set level
+    root_logger.addHandler(otel_log_handler)
 
-    # Add console handler for stdout
+
+def setup_loggers() -> None:
+    """Setup loggers for the application."""
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
     # Mimic the format of uvicorn logs
     console_formatter = logging.Formatter("%(levelname)s:     %(message)s - %(name)s")
     console_handler.setFormatter(console_formatter)
-
-    # Add both handlers to loggers
-    root_logger.addHandler(otel_log_handler)
     root_logger.addHandler(console_handler)
 
-    # Configure app and uvicorn loggers
     app_logger = logging.getLogger("app")
     app_logger.setLevel(logging.INFO)
     app_logger.propagate = True  # Enable propagation to root logger
@@ -84,17 +94,19 @@ def otel_logging_init(resource: Resource, otel_endpoint: str, otel_bearer_token:
 
 def setup_opentelemetry():
     """
-    Setup OpenTelemetry for logging.
+    Setup OpenTelemetry for log and trace exporting.
     """
 
     app_metadata = {
         "service.name": f"{settings['APP_NAME']}_{settings['ENV_NAME']}",
         "deployment.environment": settings["ENV_NAME"],
     }
+    otlp_auth = OTLPAuthConfig(
+        endpoint=settings["OTEL_ENDPOINT"],
+        bearer_token=settings["OTEL_BEARER_TOKEN"],
+    )
 
     resource = Resource.create(app_metadata)
 
-    otel_trace_init(resource, settings["OTEL_ENDPOINT"], settings["OTEL_BEARER_TOKEN"])
-    otel_logging_init(
-        resource, settings["OTEL_ENDPOINT"], settings["OTEL_BEARER_TOKEN"]
-    )
+    otel_trace_init(resource, otlp_auth)
+    otel_logging_init(resource, otlp_auth)
