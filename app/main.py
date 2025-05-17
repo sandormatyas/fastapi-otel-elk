@@ -1,9 +1,11 @@
-from fastapi import FastAPI
-from app.routers.v1 import v1_router
-from app.logging import setup_opentelemetry
 import logging
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
+from app.logging import setup_opentelemetry
+from app.routers.v1 import v1_router
 
 logger = logging.getLogger(__name__)
 

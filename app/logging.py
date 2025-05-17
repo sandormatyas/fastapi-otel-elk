@@ -1,5 +1,4 @@
 import logging
-from app.config import settings
 
 from opentelemetry import trace
 from opentelemetry._logs import set_logger_provider
@@ -10,6 +9,8 @@ from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+from app.config import settings
 
 
 def otel_trace_init(resource: Resource, otel_endpoint: str, otel_bearer_token: str):
