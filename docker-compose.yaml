@@ -1,4 +1,4 @@
-name: api-and-elk
+name: fastapi-otel-elk
 
 include:
   - ./docker-elk/docker-compose.yml
