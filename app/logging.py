@@ -20,7 +20,7 @@ class OTLPAuthConfig(BaseModel):
     endpoint: str
     bearer_token: str
     headers: dict = Field(default_factory=dict)
-    
+
     def model_post_init(self, __context):
         """Set headers after initialization"""
         self.headers = {"authorization": f"Bearer {self.bearer_token}"}

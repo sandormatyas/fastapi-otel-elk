@@ -1,7 +1,8 @@
 import logging
+from typing import Optional
 
 from fastapi import APIRouter, Query
-from typing import Optional
+
 from app.models.pets import Pet
 
 logger = logging.getLogger(__name__)
